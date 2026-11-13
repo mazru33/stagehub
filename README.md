@@ -8,11 +8,15 @@ Run npm run check then npm run serve. Set PORT to an unused port (for example 50
 
 ## Vercel
 
-Import the repository into Vercel using framework Other, repository root as Root Directory, output public, build command npm run check and an empty install command. vercel.json records these settings. Only public/ is served; Firebase and Supabase functions are not deployed by Vercel. The configured browser publishable key is public; never place service-role credentials in public/.
+Repository: https://github.com/mazru33/stagehub (main).
 
-Connect the GitHub repository to Vercel and use main as Production Branch. Pushes to main then deploy automatically; other branches get previews. Local edits require a reviewed commit and push before deployment. GitHub integration is pending until repository access is available.
+Production: https://stagehub-mohammed-almazrouas-projects.vercel.app
 
-Add the exact Vercel production origin plus /dashboard.html and /login.html to Supabase Auth redirect allowlists, and select the canonical production Site URL. Email confirmation and password reset can redirect to the previous Firebase origin until this is configured.
+Vercel project: stagehub, team mohammed-almazrouas-projects. Framework Other, repository root as Root Directory, output public, build command npm run check && npm test and an empty install command. vercel.json records these settings. Only public/ is served; Firebase and Supabase functions are not deployed by Vercel. The configured browser publishable key is public; never place service-role credentials in public/.
+
+The repository is connected to Vercel. Pushes to main deploy automatically; other branches get previews. Local edits require a reviewed commit and push before deployment. The Nova-College/Stagehub repository contains an earlier copy; it is not the deployment source because Vercel Hobby rejects private organization repositories.
+
+Supabase follow-up: add https://stagehub-mohammed-almazrouas-projects.vercel.app/dashboard.html and https://stagehub-mohammed-almazrouas-projects.vercel.app/login.html to the Auth redirect allowlist, and select the canonical production Site URL. This setting has not been verified or changed. Email confirmation and password reset can redirect to the previous Firebase origin until configured.
 
 ## Student-controlled applications
 
@@ -24,4 +28,4 @@ Existing legacy email Edge Functions remain in the source for reference and are 
 
 ## Verification
 
-Syntax checks pass. Rendering checks cover every catalogue listing, including blank-recipient fallbacks. mailto Unicode encoding and MIME PDF attachment round-trip pass. Live account login, private CV upload/download and application writes require an authorized test account; real email client draft handling needs manual testing in Outlook/Gmail/mobile.
+Run npm run check and npm test. Rendering checks cover every catalogue listing, including blank-recipient fallbacks. mailto Unicode encoding, folded Unicode subject headers and MIME PDF attachment round-trip pass. Browser checks cover listing navigation, guest fallback, login return links and a 390px mobile viewport. Live account login, private CV upload/download and application writes require an authorized test account; real email client draft handling needs manual testing in Outlook/Gmail/mobile.
