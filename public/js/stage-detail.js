@@ -36,6 +36,15 @@ function mailFields() {
 function mailtoUrl({to,subject,body}) { return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`; }
 function mimeHeader(value) { return String(value).replace(/[\r\n]/g,' ').replace(/[^\x20-\x7E]/g,'?'); }
 function mimeText(value) { return new TextEncoder().encode(value); }
+function mimeSubject(value) {
+  const words=[];let chunk='';
+  for(const char of String(value).replace(/[\r\n]/g,' ')){
+    if(mimeText(chunk+char).length>42){words.push(chunk);chunk='';}
+    chunk+=char;
+  }
+  if(chunk)words.push(chunk);
+  return words.map(word=>`=?UTF-8?B?${btoa(String.fromCharCode(...mimeText(word)))}?=`).join('\r\n ');
+}
 function base64(bytes) { let result=''; for(let i=0;i<bytes.length;i+=8192)result+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(result).replace(/.{1,76}/g,'$&\r\n').trimEnd(); }
 async function cvBytes(profile) {
   if(!profile?.cv_path)return null;
@@ -49,7 +58,7 @@ async function cvBytes(profile) {
 }
 async function downloadEmailDraft(fields,profile) {
   const boundary='stagehub_'+crypto.randomUUID().replace(/-/g,'');
-  const lines=[`To: ${mimeHeader(fields.to)}`,`Subject: =?UTF-8?B?${btoa(String.fromCharCode(...mimeText(fields.subject)))}?=`, 'X-Unsent: 1', 'MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${boundary}"`,'',`--${boundary}`,'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',base64(mimeText(fields.body))];
+  const lines=[`To: ${mimeHeader(fields.to)}`,`Subject: ${mimeSubject(fields.subject)}`, 'X-Unsent: 1', 'MIME-Version: 1.0',`Content-Type: multipart/mixed; boundary="${boundary}"`,'',`--${boundary}`,'Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',base64(mimeText(fields.body))];
   const cv=await cvBytes(profile);
   if(cv){lines.push(`--${boundary}`,'Content-Type: application/pdf; name="CV.pdf"','Content-Disposition: attachment; filename="CV.pdf"','Content-Transfer-Encoding: base64','',base64(cv));}
   lines.push(`--${boundary}--`,'');
