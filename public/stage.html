@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Bekijk stage-informatie op StageHub.nl.">
+  <title>Stage bekijken — StageHub.nl</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/styles.css">
+  <style>#stageDetail{margin:32px 0}.stage-detail-card{padding:clamp(22px,4vw,44px)}.stage-detail-card section{margin:26px 0}.stage-detail-description{max-width:900px;white-space:pre-wrap}.stage-detail-card .card-actions{margin-top:28px}</style>
+  <script type="module" src="/js/stage-detail.js"></script>
+</head>
+<body>
+  <header class="site-header"><a class="brand" href="/"><span class="brand-mark">S</span><span>StageHub<span class="brand-dot">.nl</span></span></a><nav class="nav-auth" id="navAuth"><a class="nav-link" href="/stages.html">Stages bekijken</a></nav></header>
+  <main class="page-shell">
+    <p><a class="back-link" href="/stages.html">← Terug naar stages</a></p>
+    <div id="stageDetail" aria-live="polite"><div class="loading-card"><span class="loader"></span> Stage laden…</div></div>
+  </main>
+  <footer class="auth-footer">© StageHub.nl · Jouw volgende stap begint hier.</footer>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

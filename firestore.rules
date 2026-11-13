@@ -1,0 +1,111 @@
+// Prototype data model: stages are admin/importer-managed published listings.
+// stagehub_profiles/{uid} is the user's private editable profile.
+// stagehub_saved_stages/{uid__stageId} and stagehub_applications/{uid__stageId}
+// are private owner records; importRuns are callable-function logs.
+// Admin authority comes only from the verified Authentication custom claim.
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() { return request.auth != null; }
+    function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
+    function isDocOwner() { return isAuthenticated() && request.auth.uid == resource.data.user_id; }
+    function uidUnchanged() { return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid; }
+    function uidNotModified() { return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid; }
+    function signedIn() { return isAuthenticated(); }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function owns(userId) { return isOwner(userId); }
+    function validText(value, maxLength) { return value is string && value.size() <= maxLength; }
+    function validProfile(data, userId) {
+      return data.keys().hasOnly(['id','email','display_name','school','study_level','city','interests','future_goal','preferred_role','about_me','skills','preferred_city','travel_radius_km','availability_date','work_preference','linkedin_url','portfolio_url','created_at','updated_at'])
+        && data.id == userId
+        && (!('email' in data) || validText(data.email, 254))
+        && (!('display_name' in data) || validText(data.display_name, 100))
+        && (!('school' in data) || validText(data.school, 160))
+        && (!('study_level' in data) || data.study_level == null || validText(data.study_level, 80))
+        && (!('city' in data) || validText(data.city, 120))
+        && (!('future_goal' in data) || validText(data.future_goal, 500))
+        && (!('preferred_role' in data) || validText(data.preferred_role, 120))
+        && (!('about_me' in data) || validText(data.about_me, 2000))
+        && (!('preferred_city' in data) || validText(data.preferred_city, 120))
+        && (!('work_preference' in data) || validText(data.work_preference, 40))
+        && (!('linkedin_url' in data) || data.linkedin_url == null || (validText(data.linkedin_url, 2048) && data.linkedin_url.matches('^https?://.*')))
+        && (!('portfolio_url' in data) || data.portfolio_url == null || (validText(data.portfolio_url, 2048) && data.portfolio_url.matches('^https?://.*')))
+        && (!('interests' in data) || (data.interests is list && data.interests.size() <= 30))
+        && (!('skills' in data) || (data.skills is list && data.skills.size() <= 50))
+        && (!('travel_radius_km' in data) || data.travel_radius_km == null || (data.travel_radius_km is number && data.travel_radius_km >= 0 && data.travel_radius_km <= 500))
+        && (!('availability_date' in data) || data.availability_date == null || validText(data.availability_date, 10))
+        && (!('created_at' in data) || validText(data.created_at, 40))
+        && (!('updated_at' in data) || validText(data.updated_at, 40));
+    }
+    function validStage(stageId) {
+      // Public listings are served from the Firebase Hosting catalog; validate the
+      // identifier shape without spending a Firestore read to re-check the listing.
+      return stageId is string && stageId.matches('^[A-Za-z0-9_-]{1,128}$');
+    }
+    function validSaved(data, userId, savedId) {
+      return data.keys().hasOnly(['id','user_id','stage_id','created_at','updated_at'])
+        && data.user_id == userId && data.stage_id is string && data.stage_id.size() <= 128
+        && validStage(data.stage_id) && savedId == userId + '__' + data.stage_id
+        && data.id == savedId && validText(data.created_at, 40) && validText(data.updated_at, 40);
+    }
+    function validApplication(data, userId, applicationId) {
+      return data.keys().hasOnly(['id','user_id','stage_id','status','notes','applied_at','confirmation_email_sent_at','created_at','updated_at'])
+        && data.user_id == userId && data.stage_id is string && data.stage_id.size() <= 128
+        && validStage(data.stage_id) && applicationId == userId + '__' + data.stage_id
+        && data.id == applicationId
+        && data.status in ['saved','applied','interview','offer','rejected','withdrawn']
+        && (!('notes' in data) || validText(data.notes, 2000))
+        && (!('applied_at' in data) || data.applied_at == null || validText(data.applied_at, 10))
+        && (!('confirmation_email_sent_at' in data) || validText(data.confirmation_email_sent_at, 40))
+        && validText(data.id, 256) && validText(data.created_at, 40) && validText(data.updated_at, 40);
+    }
+
+    match /stages/{stageId} {
+      allow get, list: if isAdmin() || resource.data.status == 'published';
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /stagehub_profiles/{userId} {
+      allow get, list: if isAdmin() || owns(userId) || (signedIn() && resource.data.id == request.auth.uid);
+      allow create: if isAdmin() || (owns(userId) && uidUnchanged() && validProfile(request.resource.data, userId));
+      allow update: if isAdmin() || (owns(userId) && validProfile(request.resource.data, userId)
+        && uidNotModified()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email','display_name','school','study_level','city','interests','future_goal','preferred_role','about_me','preferred_city','travel_radius_km','availability_date','work_preference','linkedin_url','portfolio_url','skills','updated_at']));
+      allow delete: if isAdmin() || owns(userId);
+    }
+
+    match /stagehub_saved_stages/{savedId} {
+      allow get, list: if isAdmin() || owns(resource.data.user_id);
+      allow create: if isAdmin() || (owns(request.resource.data.user_id) && uidUnchanged() && validSaved(request.resource.data, request.auth.uid, savedId));
+      allow update: if isAdmin() || (isDocOwner() && uidNotModified() && validSaved(request.resource.data, request.auth.uid, savedId)
+        && request.resource.data.user_id == resource.data.user_id && request.resource.data.stage_id == resource.data.stage_id
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['updated_at']));
+      allow delete: if isAdmin() || isDocOwner();
+    }
+
+    match /stagehub_applications/{applicationId} {
+      allow get, list: if isAdmin() || owns(resource.data.user_id);
+      allow create: if isAdmin() || (owns(request.resource.data.user_id) && uidUnchanged() && validApplication(request.resource.data, request.auth.uid, applicationId));
+      allow update: if isAdmin() || (isDocOwner() && uidNotModified() && validApplication(request.resource.data, request.auth.uid, applicationId)
+        && request.resource.data.user_id == resource.data.user_id && request.resource.data.stage_id == resource.data.stage_id
+        && request.resource.data.created_at == resource.data.created_at
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','notes','applied_at','confirmation_email_sent_at','updated_at']));
+      allow delete: if isAdmin() || isDocOwner();
+    }
+
+    match /importRuns/{runId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // Legacy read-only compatibility for import history created before migration.
+    match /stagehub_import_runs/{runId} {
+      allow get, list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
+
+

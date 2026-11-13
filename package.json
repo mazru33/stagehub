@@ -1,0 +1,20 @@
+{
+  "name": "stagehub-firebase",
+  "version": "4.0.0",
+  "private": true,
+  "type": "module",
+  "description": "StageHub.nl — Supabase Auth, profiles and applications with Firebase Hosting",
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "set-admin": "node scripts/set-admin.mjs",
+    "emulators": "npx -y firebase-tools@latest emulators:start --only auth,firestore,functions,hosting",
+    "check": "node --check public/js/firebase-db.js && node --check public/js/common.js && node --check public/js/auth.js && node --check public/js/stages.js && node --check public/js/dashboard.js && node --check public/js/admin.js && node --check public/js/site.js && node --check public/js/ai.js && node --check public/js/stage-detail.js && node --check functions/index.js && node --check scripts/set-admin.mjs",
+    "import:stagemarkt": "node scripts/import-stagemarkt-local.mjs",
+    "backfill:stagemarkt-contacts": "node scripts/backfill-stagemarkt-contacts.mjs",
+    "catalog:stagemarkt": "node scripts/build-stagemarkt-static-catalog.mjs",
+    "catalog:application-contacts": "node scripts/build-application-contacts.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0"
+  }
+}
