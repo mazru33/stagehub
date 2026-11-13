@@ -5,6 +5,7 @@
   "type": "module",
   "description": "StageHub.nl — Supabase Auth, profiles and applications with Firebase Hosting",
   "scripts": {
+    "test": "node scripts/verify-applications.mjs",
     "serve": "node scripts/serve.mjs",
     "set-admin": "node scripts/set-admin.mjs",
     "emulators": "npx -y firebase-tools@latest emulators:start --only auth,firestore,functions,hosting",
