@@ -6,15 +6,16 @@ let user = null, savedIds = new Set(), catalog = [], filteredCatalog = [], rows 
 const list = $('#stageList');
 function cleanTerm(value) { return String(value || '').replace(/[(),%_\\]/g, ' ').replace(/[<>"']/g, ' ').replace(/\bmbo\s*([1-4])\b/gi, 'MBO $1').replace(/\s+/g, ' ').trim().slice(0,100); }
 function normalize(value) { return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl-NL'); }
-function currentFilters() { return { q:cleanTerm($('#searchInput').value), city:cleanTerm($('#cityInput').value), level:$('#educationInput').value, category:$('#categoryInput').value }; }
+function currentFilters() { return { q:cleanTerm($('#searchInput').value), city:cleanTerm($('#cityInput').value), level:$('#educationInput').value, category:$('#categoryInput').value, emailOnly:Boolean($('#emailOnly')?.checked) }; }
 function filterCatalog() {
   const f=currentFilters(), terms=normalize(f.q).split(/\s+/).filter(Boolean), city=normalize(f.city), level=normalize(f.level), category=normalize(f.category);
   filteredCatalog=catalog.filter(stage=>{
     if(stage.status!=='published')return false;
+    if(f.emailOnly&&!stage.contact_email)return false;
     if(level&&normalize(stage.education_level)!==level)return false;
     if(category&&normalize(stage.category)!==category)return false;
     if(city&&!normalize(stage.city||stage.location).includes(city))return false;
-    if(terms.length){const haystack=normalize([stage.title,stage.company,stage.city,stage.location,stage.category,stage.education_level,stage.description,...(stage.skills||[])].join(' '));if(!terms.every(term=>haystack.includes(term)))return false;}
+    if(terms.length){const haystack=normalize([stage.title,stage.company,stage.city,stage.location,stage.category,stage.education_level,stage.description,...(stage.skills||[]),...(stage.search_tokens||[])].join(' '));if(!terms.every(term=>haystack.includes(term)))return false;}
     return true;
   });
 }
@@ -34,7 +35,7 @@ function renderMarkers() {
   rows.forEach(s => {
     const lat = Number(s.latitude), lng = Number(s.longitude);
     if (s.latitude === null || s.longitude === null || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    const popup = `<div class="map-popup"><b>${esc(s.title)}</b><br>${esc(s.company || '')}<br>${esc(s.city || s.location || '')}<br><a href="${esc(safeHref(s.application_url || s.source_url || '#'))}" target="_blank" rel="noopener">Bekijk vacature ↗</a></div>`;
+    const popup = `<div class="map-popup"><b>${esc(s.title)}</b><br>${esc(s.company || '')}<br>${esc(s.city || s.location || '')}<br><a href="/stage.html?id=${encodeURIComponent(s.id)}" target="_blank" rel="noopener">Solliciteer via StageHUB ↗</a></div>`;
     window.L.marker([lat,lng]).bindPopup(popup).addTo(markerLayer); count++;
   });
   $('#mapPinCount').textContent = `${count} ${count===1?'locatie':'locaties'}`;
@@ -66,7 +67,7 @@ async function loadStages(reset=true) {
     if(!catalog.length)catalog=await getStageCatalog();
     if(reset)filterCatalog();
     const batch=filteredCatalog.slice(pageOffset,pageOffset+PAGE_SIZE);pageOffset+=batch.length;rows=reset?batch:[...rows,...batch];hasMore=pageOffset<filteredCatalog.length;
-    $('#resultCount').textContent=`${rows.length}${hasMore?'+':''} ${rows.length===1?'stage':'stages'} in deze zoekopdracht`;
+    $('#resultCount').textContent=`${filteredCatalog.length.toLocaleString('nl-NL')} ${filteredCatalog.length===1?'stage':'stages'} gevonden · ${rows.length} getoond`;
     $('#resultsTitle').textContent=currentFilters().q?`Resultaten voor “${currentFilters().q}”`:'Kansen voor jou';
     populateCategories(); renderCards();
   } catch(error) {
@@ -81,9 +82,9 @@ async function init() {
   await loadStages(true);
   user=await authPromise;
   if(user){const {data,error}=await backend.from('stagehub_saved_stages').select('stage_id').eq('user_id',user.id);if(!error){savedIds=new Set((data||[]).map(x=>x.stage_id));renderCards();}}
-  ['searchInput','cityInput','educationInput','categoryInput'].forEach(id=>$('#'+id).addEventListener(id==='searchInput'||id==='cityInput'?'input':'change',()=>{clearTimeout(debounceTimer);debounceTimer=setTimeout(()=>loadStages(true),250);}));
+  ['searchInput','cityInput','educationInput','categoryInput','emailOnly'].forEach(id=>$('#'+id).addEventListener(id==='searchInput'||id==='cityInput'?'input':'change',()=>{clearTimeout(debounceTimer);debounceTimer=setTimeout(()=>loadStages(true),250);}));
   $('#filterForm').addEventListener('submit',e=>{e.preventDefault();loadStages(true);});
-  $('#clearFilters').addEventListener('click',()=>{$('#searchInput').value='';$('#cityInput').value='';$('#educationInput').value='';$('#categoryInput').value='';loadStages(true);});
+  $('#clearFilters').addEventListener('click',()=>{$('#searchInput').value='';$('#cityInput').value='';$('#educationInput').value='';$('#categoryInput').value='';$('#emailOnly').checked=false;loadStages(true);});
   $('#loadMore').addEventListener('click',()=>loadStages(false));
   $('#listViewBtn').addEventListener('click',()=>{list.hidden=false;$('#mapPanel').hidden=true;$('#listViewBtn').classList.add('active');$('#mapViewBtn').classList.remove('active');$('#listViewBtn').setAttribute('aria-pressed','true');$('#mapViewBtn').setAttribute('aria-pressed','false');});
   $('#mapViewBtn').addEventListener('click',async()=>{list.hidden=true;$('#mapPanel').hidden=false;$('#listViewBtn').classList.remove('active');$('#mapViewBtn').classList.add('active');$('#listViewBtn').setAttribute('aria-pressed','false');$('#mapViewBtn').setAttribute('aria-pressed','true');await setupMap();if(mapReady){setTimeout(()=>{map.invalidateSize();renderMarkers();},60);}});

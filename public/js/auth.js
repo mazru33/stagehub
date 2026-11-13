@@ -1,13 +1,13 @@
 import { backend } from './firebase-db.js';
-import { $, toast, ensureProfile } from './common.js';
+import { $, toast, ensureProfile, safeInternalPath } from './common.js';
 const form = $('#authForm');
 if (form) {
   const params = new URLSearchParams(location.search);
   let mode = params.get('mode') === 'reset' || new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery' ? 'reset' : params.get('mode') === 'signup' ? 'signup' : 'login';
   const title = $('#authHeading'), submit = $('#authSubmit'), toggle = $('#toggleMode'), nameField = $('#nameField'), message = $('#authMessage');
   const next = params.get('next');
-  const safeNext = next && next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard.html';
-  function render() { const signup = mode === 'signup', reset = mode === 'reset'; title.textContent = reset ? 'Nieuw wachtwoord instellen' : signup ? 'Maak je account' : 'Welkom terug'; submit.textContent = reset ? 'Wachtwoord opslaan' : signup ? 'Account maken' : 'Inloggen'; toggle.textContent = signup ? 'Heb je al een account? Inloggen' : 'Nieuw bij StageHub? Maak gratis een account'; toggle.hidden = reset; nameField.hidden = !signup; $('#email').closest('label').hidden = reset; $('#email').required = !reset; $('#resetPassword').hidden = signup || reset; $('#password').autocomplete = signup || reset ? 'new-password' : 'current-password'; message.textContent = reset ? 'Kies een nieuw wachtwoord voor je StageHub-account.' : ''; }
+  const safeNext = safeInternalPath(next);
+  function render(clearMessage=true) { const signup = mode === 'signup', reset = mode === 'reset'; title.textContent = reset ? 'Nieuw wachtwoord instellen' : signup ? 'Maak je account' : 'Welkom terug'; submit.textContent = reset ? 'Wachtwoord opslaan' : signup ? 'Account maken' : 'Inloggen'; toggle.textContent = signup ? 'Heb je al een account? Inloggen' : 'Nieuw bij StageHub? Maak gratis een account'; toggle.hidden = reset; nameField.hidden = !signup; $('#email').closest('label').hidden = reset; $('#email').required = !reset; $('#resetPassword').hidden = signup || reset; $('#password').autocomplete = signup || reset ? 'new-password' : 'current-password'; if(clearMessage)message.textContent = reset ? 'Kies een nieuw wachtwoord voor je StageHub-account.' : ''; }
   toggle.addEventListener('click', () => { mode = mode === 'signup' ? 'login' : 'signup'; render(); });
   $('#resetPassword').addEventListener('click', async () => {
     const email = $('#email').value.trim();
@@ -36,7 +36,7 @@ if (form) {
         await ensureProfile(data.user); location.href = safeNext; return;
       }
     } catch (err) { toast(err.message || 'Inloggen is mislukt.','error'); }
-    finally { submit.disabled = false; render(); }
+    finally { submit.disabled = false; render(false); }
   });
   render();
   backend.auth.getSession().then(({data}) => { if (data.session && mode !== 'reset') location.replace(safeNext); });

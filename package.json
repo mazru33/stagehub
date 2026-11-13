@@ -5,15 +5,19 @@
   "type": "module",
   "description": "StageHub.nl — Supabase Auth, profiles and applications with Firebase Hosting",
   "scripts": {
-    "test": "node scripts/verify-applications.mjs",
-    "serve": "node scripts/serve.mjs",
+    "test": "node scripts/verify-applications.mjs && node --test scripts/stagemarkt-contacts.test.mjs",
+    "serve": "npm run catalog:assets && node scripts/serve.mjs",
     "set-admin": "node scripts/set-admin.mjs",
     "emulators": "npx -y firebase-tools@latest emulators:start --only auth,firestore,functions,hosting",
     "check": "node --check public/js/firebase-db.js && node --check public/js/common.js && node --check public/js/auth.js && node --check public/js/stages.js && node --check public/js/dashboard.js && node --check public/js/admin.js && node --check public/js/site.js && node --check public/js/ai.js && node --check public/js/stage-detail.js && node --check functions/index.js && node --check scripts/set-admin.mjs",
     "import:stagemarkt": "node scripts/import-stagemarkt-local.mjs",
-    "backfill:stagemarkt-contacts": "node scripts/backfill-stagemarkt-contacts.mjs",
+    "backfill:stagemarkt-contacts": "node scripts/enrich-stagemarkt-contacts.mjs && node scripts/build-application-contacts.mjs",
     "catalog:stagemarkt": "node scripts/build-stagemarkt-static-catalog.mjs",
-    "catalog:application-contacts": "node scripts/build-application-contacts.mjs"
+    "catalog:application-contacts": "node scripts/build-application-contacts.mjs",
+    "catalog:enrich": "node scripts/enrich-stagemarkt-contacts.mjs && node scripts/build-application-contacts.mjs",
+    "catalog:refresh": "node scripts/build-stagemarkt-static-catalog.mjs && npm run catalog:enrich",
+    "catalog:assets": "node scripts/build-stage-assets.mjs",
+    "build": "npm run check && npm test && npm run catalog:assets"
   },
   "dependencies": {
     "firebase-admin": "^14.5.0"

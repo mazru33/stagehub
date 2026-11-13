@@ -1,24 +1,4 @@
-import crypto from 'node:crypto';
-import fs from 'node:fs/promises';
-import path from 'node:path';
-import { createRequire } from 'node:module';
-const PROJECT='stagehub-777cd',DATABASE='stagehub-main',API='https://stagemarkt.nl/api/query-hub/education-search',PAGES_TO_REFRESH=7,PAGE_SIZE=1000,BATCH_SIZE=100;
-const ROOT=`projects/${PROJECT}/databases/${DATABASE}/documents`,CHECKPOINT=path.resolve('scripts/.stagemarkt-contact-progress.json');
-const require=createRequire(import.meta.url),auth=require('../.firebase-cli/node_modules/firebase-tools/lib/auth.js'),account=auth.getGlobalDefaultAccount();
-if(!account?.tokens?.refresh_token)throw new Error('Run Firebase CLI login first.');
-async function token(){const result=await auth.getAccessToken(account.tokens.refresh_token,[]);if(!result?.access_token)throw new Error('Firebase login expired; run firebase login.');return result.access_token;}
-const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-async function firestore(writes){const response=await fetch(`https://firestore.googleapis.com/v1/${ROOT}:commit`,{method:'POST',headers:{authorization:`Bearer ${await token()}`,'content-type':'application/json'},body:JSON.stringify({writes})});const body=await response.text();if(!response.ok)throw new Error(`Firestore HTTP ${response.status}: ${body.slice(0,350)}`);}
-async function getPage(page){const url=new URL(API);url.searchParams.set('pageSize',String(PAGE_SIZE));url.searchParams.set('page',String(page));for(let attempt=0;attempt<5;attempt++){const r=await fetch(url,{headers:{accept:'application/json','user-agent':'StageHubSchoolProject/4.0 (authorized Stagemarkt vacancy import)'}});if(r.ok)return r.json();if(![429,500,502,503,504].includes(r.status))throw new Error(`Stagemarkt HTTP ${r.status} on page ${page}.`);await pause(2000*(attempt+1));}throw new Error(`Stagemarkt page ${page} kept failing.`);}
-const fv=value=>value==null?{nullValue:'NULL_VALUE'}:{stringValue:String(value)};
-function searchTokens(values){const tokens=new Set();for(const value of values){const normalized=String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('nl-NL');for(const token of normalized.match(/[a-z0-9]+/g)||[])if(token.length>1)tokens.add(token);const compact=normalized.replace(/[^a-z0-9]/g,'');if(compact.length>1)tokens.add(compact);}return [...tokens].slice(0,120).map(stringValue=>({stringValue}));}
-async function main(){let state;try{state=JSON.parse(await fs.readFile(CHECKPOINT,'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;state={nextPage:1,updated:0,totalPages:PAGES_TO_REFRESH};}
-  console.log(`Refreshing business contact details from source page ${state.nextPage}/${PAGES_TO_REFRESH}.`);
-  while(state.nextPage<=PAGES_TO_REFRESH){const pageNo=state.nextPage,page=await getPage(pageNo);const items=Array.isArray(page.items)?page.items:[];let count=0;
-    const sectorOptions=(page.filters||[]).find(filter=>filter.id==='sectoren')?.options||[],sectorLabels=new Map(sectorOptions.map(option=>[String(option.id),String(option.label||'')]));
-    for(let offset=0;offset<items.length;offset+=BATCH_SIZE){const writes=items.slice(offset,offset+BATCH_SIZE).map(item=>{const sourceId=String(item?.leerplaatsId||'').trim();if(!sourceId)return null;const org=item.organisatie||{},address=item.adres||org.vestigingsadres||{},qualification=item.kwalificatie||{},city=String(address.plaats||'').trim(),category=sectorLabels.get(String(qualification.sectorId||''))||'',level=qualification.niveau?`MBO ${qualification.niveau}`:'MBO';const id=crypto.createHash('sha256').update(`stagemarkt:${sourceId}`).digest('hex');const skills=(Array.isArray(item.kenmerken)?item.kenmerken:[]).map(tag=>String(tag?.omschrijving||tag?.naam||'').trim()).filter(Boolean);const tokens=searchTokens([item.titel,qualification.naam,org.naam,city,[city,address.land?.name||'Nederland'].filter(Boolean).join(', '),level,category,skills,item.leerweg,item.omschrijving]);const values={contact_name:fv(org.contactpersoonNaam||null),contact_email:fv(String(org.emailadres||'').trim().slice(0,254)||null),contact_phone:fv(String(org.telefoonnummer||'').trim().slice(0,40)||null),contact_website:fv(String(org.website||'').trim().slice(0,2048)||null),search_tokens:{arrayValue:{values:tokens}}};return {update:{name:`${ROOT}/stages/${id}`,fields:values},updateMask:{fieldPaths:Object.keys(values)}};}).filter(Boolean);if(writes.length){await firestore(writes);count+=writes.length;}}
-    state.updated+=count;state.nextPage++;await fs.writeFile(CHECKPOINT,JSON.stringify({...state,updatedAt:new Date().toISOString()},null,2));console.log(`Page ${pageNo}/${PAGES_TO_REFRESH}: refreshed ${count} listings; ${state.updated} total.`);if(state.nextPage<=PAGES_TO_REFRESH)await pause(500);
-  }
-  console.log(`Contact refresh complete: ${state.updated} Stagemarkt listings. Checkpoint: ${CHECKPOINT}`);
-}
-main().catch(e=>{console.error(`Contact refresh stopped: ${e.message}`);console.error('Committed updates are safe; rerun to resume.');process.exitCode=1;});
+// The production catalogue is static and backed by Supabase for student data.
+// Keep the previous entry point working without Firebase CLI credentials.
+await import('./enrich-stagemarkt-contacts.mjs');
+await import('./build-application-contacts.mjs');

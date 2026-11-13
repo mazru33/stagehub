@@ -18,3 +18,6 @@ scripts/.stagemarkt-contact-progress.json
 
 .vercel/
 supabase/.temp/
+.scratch/
+public/data/stage-index.json
+public/data/stage-details/

@@ -1,31 +1,43 @@
 # StageHUB
 
-Static website served from public/; Supabase supplies authentication, profiles, private PDF CV storage, saved listings and application tracking.
-
-## Local use
-
-Run npm run check then npm run serve. Set PORT to an unused port (for example 5057) if 5000 is occupied. No dependency installation is needed for the static site or checks. firebase-admin is used only by maintenance scripts.
-
-## Vercel
-
-Repository: https://github.com/mazru33/stagehub (main).
-
 Production: https://stagehub-mohammed-almazrouas-projects.vercel.app
+Repository: https://github.com/mazru33/stagehub (`main`)
 
-Vercel project: stagehub, team mohammed-almazrouas-projects. Framework Other, repository root as Root Directory, output public, build command npm run check && npm test and an empty install command. vercel.json records these settings. Only public/ is served; Firebase and Supabase functions are not deployed by Vercel. The configured browser publishable key is public; never place service-role credentials in public/.
+## Run and publish
 
-The repository is connected to Vercel. Pushes to main deploy automatically; other branches get previews. Local edits require a reviewed commit and push before deployment. The Nova-College/Stagehub repository contains an earlier copy; it is not the deployment source because Vercel Hobby rejects private organization repositories.
+Use Node 22 or later. Run `npm run build` for syntax checks, application/contact tests and generated catalogue assets. Run `npm run serve` for local use; set `PORT=5057` if 5000 is occupied. The frontend build needs no dependency installation. `firebase-admin` is used only by legacy maintenance scripts.
 
-Supabase follow-up: add https://stagehub-mohammed-almazrouas-projects.vercel.app/dashboard.html and https://stagehub-mohammed-almazrouas-projects.vercel.app/login.html to the Auth redirect allowlist, and select the canonical production Site URL. This setting has not been verified or changed. Email confirmation and password reset can redirect to the previous Firebase origin until configured.
+Vercel project `stagehub`, team `mohammed-almazrouas-projects`, serves `public/`, skips installation and runs `npm run build`. Pushes to `main` publish automatically after checks pass. Local edits require a commit and push. Preview branches retain Vercel authentication protection. The private Nova-College/Stagehub copy is not linked because Vercel Hobby does not support private organization repositories.
 
-## Student-controlled applications
+## Stagemarkt contacts
 
-All 9,988 catalogue listings expose Solliciteer. Signed-in students can edit the recipient, subject and full message, reuse their private saved PDF CV, download the CV or an .eml draft, and manually record an application. Only 32 addresses are supplied by the source contact catalogue (snapshot 29 October 2026); they are not independently reverified as current. Other recipients start blank, with instructions to check the original vacancy or ask the employer. Original-vacancy links remain available for external applications. No employer addresses are generated.
+The search API omits the email fields displayed on vacancy pages. The importer now reads the public `education-detail?id=...` response for each exact vacancy ID. If the detail API fails, it also checks the matching vacancy in the public page payload. It never collects unrelated footer or navigation emails. It prefers the vacancy contact email, retains the separately published general company email, and records the source URL, contact type and check date. It never constructs addresses from company names or reuses another vacancy's contact.
 
-The stage detail flow never invokes backend email delivery. mailto cannot attach a CV; students attach it manually. The .eml draft includes the saved PDF and X-Unsent: 1, but email-client support varies. Students must send themselves; manual tracking does not verify delivery. PDF upload remains in the dashboard, limited to 5 MB.
+On 13 November 2026 all 9,988 existing catalogue listings were checked: **9,661** had published contact emails; **327** source records failed after retries. No records were left unchecked. Those source errors are not proof that a vacancy has closed, so the website warns students and retains the original-vacancy route. Publication on Stagemarkt does not verify mailbox delivery or guarantee that a place is still open. Current coverage is recorded in `public/data/contact-import-status.json`.
 
-Existing legacy email Edge Functions remain in the source for reference and are not deployed or invoked by this application form. Existing Supabase RLS and storage configuration are unchanged.
+- `npm run catalog:enrich`: enrich the current catalogue and rebuild application contacts. Successful checks are cached for seven days; failed records are retried.
+- `node scripts/enrich-stagemarkt-contacts.mjs --refresh`: recheck every listing, then run `npm run catalog:application-contacts`.
+- `npm run catalog:refresh`: refresh accessible search results, then enrich their contacts.
+- `npm run catalog:assets`: regenerate the search summaries and grouped full-detail files used by the browser.
 
-## Verification
+The enrichment process uses at most four workers, delays requests, respects Retry-After, uses timeouts and retries, and resumes from the ignored `.scratch/stagemarkt-detail-contacts.jsonl` checkpoint. `--limit=N`, `--concurrency=N`, `--delay=MS` and `--dry-run` are available. `--html-fallback-only` retries failed records using only the public page payload. A dry run writes checkpoints but leaves public files unchanged. `--limit=0` republishes the cached results without source requests. Only public source contact fields are imported; no credentials are needed. Contact fetching is a maintenance command and does not run on each Vercel build.
 
-Run npm run check and npm test. Rendering checks cover every catalogue listing, including blank-recipient fallbacks. mailto Unicode encoding, folded Unicode subject headers and MIME PDF attachment round-trip pass. Browser checks cover listing navigation, guest fallback, login return links and a 390px mobile viewport. Live account login, private CV upload/download and application writes require an authorized test account; real email client draft handling needs manual testing in Outlook/Gmail/mobile.
+The existing search catalogue covers the first ten accessible source pages. Stagemarkt reports a larger total, but its public search endpoint returns empty results beyond that boundary. The website does not claim to contain every Stagemarkt vacancy.
+
+Canonical data and application contacts are committed. Search summaries and 257 detail groups are generated during build and ignored by Git. A detail page fetches one small group instead of the entire catalogue. Search, the homepage, StageMatch and saved-stage relations use the same data.
+
+## Student applications
+
+The application page has three steps: check the prefilled employer address, choose a PDF CV (maximum 5 MB), and personalize the email. Guests can prepare a draft without an account. A newly chosen CV stays in memory on that page; it is not uploaded or persisted. Signed-in students can reuse the private CV saved through their profile. Text drafts remain in sessionStorage in the current tab; after leaving or refreshing, a local CV must be selected again.
+
+`mailto:` opens the student's configured mail program with recipient, subject and message. It cannot attach a file; students attach the CV themselves. An `.eml` draft includes the selected local or saved PDF, UTF-8 content and X-Unsent: 1. Compatibility varies by email client. Copying the message is also available. Students send themselves; StageHUB does not send application emails or infer delivery. Application tracking requires login and an explicit manual confirmation. Existing backend email functions remain in the source but are not invoked by this flow.
+
+Supabase continues to supply authentication, profiles, private PDF storage and tracking. No schema or RLS changes were made. The browser publishable key is public; service-role credentials must never be put in `public/`.
+
+Supabase follow-up: the production `/login.html` and `/dashboard.html` Auth redirect allowlist entries and canonical Site URL remain unverified. Email confirmation or password reset can still redirect to the previous Firebase origin until configured.
+
+## Verification and limits
+
+`npm test` checks every listing's signed-in and guest application form, blank-recipient fallbacks, source contact parsing and identity matching, unsafe URLs, Unicode mailto/MIME headers, saved/local CV attachment bytes and CV-fetch failures. Generated detail lookups were checked against all 9,988 source records. Browser checks cover real contact prefills, source-error guidance, draft persistence, matching, search navigation and a 390px mobile layout.
+
+The browser approval gate declined the automated CV file selection and .eml download tests; no alternate file-transfer route was attempted. Browser upload/download, real mail-client handling, authenticated private CV storage and application writes still need manual account testing. No test application email was sent.
