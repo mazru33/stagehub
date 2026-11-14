@@ -1,5 +1,7 @@
 // Firebase web-app configuration. Client-side keys are public; never place Admin SDK credentials here.
 export const firebaseConfig = {
+  // Enable only after Nova IT configures tenant-restricted Azure OAuth (docs/SCHOOL-LOGIN.md).
+  schoolSignInEnabled: false,
   apiKey: 'AIzaSyAvhaaqYFX6aMlx1thWApJM7fxESo0o2I8',
   authDomain: 'stagehub-777cd.firebaseapp.com',
   projectId: 'stagehub-777cd',

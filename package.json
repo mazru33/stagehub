@@ -9,7 +9,7 @@
     "serve": "npm run catalog:assets && node scripts/serve.mjs",
     "set-admin": "node scripts/set-admin.mjs",
     "emulators": "npx -y firebase-tools@latest emulators:start --only auth,firestore,functions,hosting",
-    "check": "node --check public/js/firebase-db.js && node --check public/js/common.js && node --check public/js/auth.js && node --check public/js/stages.js && node --check public/js/dashboard.js && node --check public/js/admin.js && node --check public/js/site.js && node --check public/js/ai.js && node --check public/js/stage-detail.js && node --check functions/index.js && node --check scripts/set-admin.mjs && node --check public/js/student-guide.js && node --check public/js/search-state.js",
+    "check": "node --check public/js/firebase-db.js && node --check public/js/common.js && node --check public/js/auth.js && node --check public/js/stages.js && node --check public/js/dashboard.js && node --check public/js/admin.js && node --check public/js/site.js && node --check public/js/ai.js && node --check public/js/stage-detail.js && node --check functions/index.js && node --check scripts/set-admin.mjs && node --check public/js/student-guide.js && node --check public/js/search-state.js && node --check public/js/school-sharing.js && node --check public/js/teacher.js",
     "import:stagemarkt": "node scripts/import-stagemarkt-local.mjs",
     "backfill:stagemarkt-contacts": "node scripts/enrich-stagemarkt-contacts.mjs && node scripts/build-application-contacts.mjs",
     "catalog:stagemarkt": "node scripts/build-stagemarkt-static-catalog.mjs",

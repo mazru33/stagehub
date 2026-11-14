@@ -1,4 +1,5 @@
 import { backend } from './firebase-db.js';
+import { firebaseConfig } from './firebase-config.js';
 import { $, toast, ensureProfile, safeInternalPath } from './common.js';
 const form = $('#authForm');
 if (form) {
@@ -7,6 +8,20 @@ if (form) {
   const title = $('#authHeading'), submit = $('#authSubmit'), toggle = $('#toggleMode'), nameField = $('#nameField'), message = $('#authMessage');
   const next = params.get('next');
   const safeNext = safeInternalPath(next);
+  const schoolButton = $('#schoolLogin');
+  schoolButton.disabled = !firebaseConfig.schoolSignInEnabled;
+  $('#schoolLoginStatus').textContent = firebaseConfig.schoolSignInEnabled
+    ? 'Voor studenten en docenten van Nova College. Je logt veilig in bij Microsoft.'
+    : 'Schoollogin wordt voorbereid met Nova College. Je kunt hieronder je bestaande StageHub-account gebruiken.';
+  schoolButton.addEventListener('click', async () => {
+    schoolButton.disabled = true;
+    try {
+      const callback = new URL('/login.html', location.origin);
+      callback.searchParams.set('next', safeNext);
+      const { error } = await backend.auth.signInWithSchool(callback.href);
+      if (error) throw error;
+    } catch (error) { toast(error.message || 'Schoollogin kon niet starten.', 'error'); schoolButton.disabled = false; }
+  });
   function render(clearMessage=true) { const signup = mode === 'signup', reset = mode === 'reset'; title.textContent = reset ? 'Nieuw wachtwoord instellen' : signup ? 'Maak je account' : 'Welkom terug'; submit.textContent = reset ? 'Wachtwoord opslaan' : signup ? 'Account maken' : 'Inloggen'; toggle.textContent = signup ? 'Heb je al een account? Inloggen' : 'Nieuw bij StageHub? Maak gratis een account'; toggle.hidden = reset; nameField.hidden = !signup; $('#email').closest('label').hidden = reset; $('#email').required = !reset; $('#resetPassword').hidden = signup || reset; $('#password').autocomplete = signup || reset ? 'new-password' : 'current-password'; if(clearMessage)message.textContent = reset ? 'Kies een nieuw wachtwoord voor je StageHub-account.' : ''; }
   toggle.addEventListener('click', () => { mode = mode === 'signup' ? 'login' : 'signup'; render(); });
   $('#resetPassword').addEventListener('click', async () => {
@@ -39,5 +54,7 @@ if (form) {
     finally { submit.disabled = false; render(false); }
   });
   render();
+  const authError = params.get('error') || new URLSearchParams(location.hash.slice(1)).get('error');
+  if (authError) { message.textContent = 'Microsoft-inloggen is niet afgerond. Probeer opnieuw of gebruik je StageHub-account.'; history.replaceState(null, '', '/login.html?next=' + encodeURIComponent(safeNext)); }
   backend.auth.getSession().then(({data}) => { if (data.session && mode !== 'reset') location.replace(safeNext); });
 }

@@ -21,6 +21,11 @@ const shapedUser = user => user ? {
 const errorShape = error => error ? { name: error.name || 'Error', message: error.message || String(error), code: error.code || 'unknown', context: error.context } : null;
 
 const authFacade = {
+  async signInWithSchool(redirectTo) {
+    if (!firebaseConfig.schoolSignInEnabled) return { error: { message: 'Schoollogin wordt nog ingesteld met Nova College.' } };
+    const { data, error } = await supabase.auth.signInWithOAuth({ provider: 'azure', options: { scopes: 'email', redirectTo, queryParams: { prompt: 'select_account' } } });
+    return { data, error: errorShape(error) };
+  },
   async getUser() {
     const { data, error } = await supabase.auth.getUser();
     return { data: { user: shapedUser(data?.user) }, error: errorShape(error) };
@@ -175,6 +180,14 @@ export async function sendApplicationConfirmation({ stage, stageId }) {
 
 export const backend = {
   auth: authFacade,
+  async schoolAccess() {
+    const { data, error } = await supabase.rpc('stagehub_school_access');
+    return { data, error: errorShape(error) };
+  },
+  async teacherProgress() {
+    const { data, error } = await supabase.rpc('stagehub_teacher_progress');
+    return { data, error: errorShape(error) };
+  },
   from(table) { return new QueryBuilder(table); },
   functions: { invoke: invokeFunction },
   storage: {
