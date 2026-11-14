@@ -41,3 +41,11 @@ Supabase follow-up: the production `/login.html` and `/dashboard.html` Auth redi
 `npm test` checks every listing's signed-in and guest application form, blank-recipient fallbacks, source contact parsing and identity matching, unsafe URLs, Unicode mailto/MIME headers, saved/local CV attachment bytes and CV-fetch failures. Generated detail lookups were checked against all 9,988 source records. Browser checks cover real contact prefills, source-error guidance, draft persistence, matching, search navigation and a 390px mobile layout.
 
 The browser approval gate declined the automated CV file selection and .eml download tests; no alternate file-transfer route was attempted. Browser upload/download, real mail-client handling, authenticated private CV storage and application writes still need manual account testing. No test application email was sent.
+
+## Student experience refresh — 14 November 2026
+
+The shared visual style in `public/design.css` adds warmer colours, clearer typography, touch-sized controls and responsive navigation. The homepage has an original SVG illustration, category shortcuts, varied featured companies, privacy/application FAQs and a three-step personal starter plan. The starter plan stores only its three manual checkbox states in localStorage on the current device; it does not sync to an account, send email or verify application progress.
+
+Search supports shareable `q`, `city`, `level`, `category` and `email=1` query parameters, removable filter chips and returning from an internship without losing the filters. Secondary stage-card actions remain available under “Contact & meer opties”. Extra profile fields are grouped into optional disclosures; CV upload and basic profile fields remain directly accessible.
+
+Verification includes starter-plan persistence, category shortcuts, filter round-trips, mobile menu and Escape-key behaviour, stage-card disclosures and application-page widths at 320px and 390px. Existing contact and MIME attachment checks continue to run during the build. Authenticated profile writes and actual mail-client behaviour retain the manual testing limits described above.

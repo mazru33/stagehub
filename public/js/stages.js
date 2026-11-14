@@ -1,3 +1,4 @@
+import { filtersFromQuery, queryFromFilters } from './search-state.js';
 import { backend } from './firebase-db.js';
 import { $, $$, boot, toast, esc, safeHref, stageCard, toggleSaved } from './common.js';
 import { getStageCatalog } from './stage-catalog.js';
@@ -19,6 +20,18 @@ function filterCatalog() {
     return true;
   });
 }
+function readQueryFilters(){
+  const filters=filtersFromQuery(location.search);
+  $('#searchInput').value=filters.q;$('#cityInput').value=filters.city;$('#educationInput').value=filters.level;$('#categoryInput').value=filters.category;$('#emailOnly').checked=filters.emailOnly;
+}
+function renderFilterSummary(){
+  const filters=currentFilters(),host=$('#filterSummary');if(!host)return;
+  const active=[['q','Zoekwoord: '+filters.q,filters.q],['city','Plaats: '+filters.city,filters.city],['level',filters.level,filters.level],['category',filters.category,filters.category],['emailOnly','Met e-mailadres',filters.emailOnly]].filter(item=>item[2]);
+  host.innerHTML=active.length?active.map(([key,label])=>`<button type="button" class="filter-chip" data-clear-filter="${key}" aria-label="Verwijder filter ${esc(label)}">${esc(label)} <span aria-hidden="true">×</span></button>`).join(''):'<span class="filter-hint">Kijk rustig rond. Je kunt je zoekopdracht altijd aanpassen.</span>';
+  const query=queryFromFilters(filters);
+  try{history.replaceState(null,'',location.pathname+(query?'?'+query:'')+location.hash);}catch{}
+}
+
 async function setupMap() {
   if (mapReady) { map.invalidateSize(); return; }
   if (!window.L) {
@@ -47,9 +60,10 @@ function bindCards() {
   $$('.track-stage',list).forEach(btn=>btn.addEventListener('click',async()=>{if(!user){location.href='/login.html?next='+encodeURIComponent('/dashboard.html');return;}btn.disabled=true;const {error}=await backend.from('stagehub_applications').upsert({user_id:user.id,stage_id:btn.dataset.id,status:'saved'},{onConflict:'user_id,stage_id',ignoreDuplicates:true});if(error)toast(error.message,'error');else toast('Stage staat nu in je voortgangsoverzicht.','success');btn.disabled=false;}));
 }
 function renderCards() {
-  list.innerHTML = rows.length ? rows.map(s=>stageCard(s,savedIds.has(s.id))).join('') : `<div class="empty-state"><span class="empty-icon">⌕</span><h3>Geen stages gevonden</h3><p>Probeer een andere zoekterm of vergroot je zoekgebied. Je kunt je profiel aanvullen zodat je gerichter kunt zoeken.</p><a class="button button-outline" href="/dashboard.html">Mijn profiel aanvullen</a></div>`;
+  list.innerHTML = rows.length ? rows.map(s=>stageCard(s,savedIds.has(s.id))).join('') : `<div class="empty-state"><span class="empty-icon">⌕</span><h3>Geen stages gevonden</h3><p>Probeer een andere zoekterm of vergroot je zoekgebied. Verwijder een filter of probeer een ander woord. Je hoeft geen account te maken om verder te zoeken.</p><button class="button button-outline clear-empty-filters" type="button">Opnieuw beginnen</button></div>`;
   $('#loadMore').hidden = !hasMore;
   bindCards(); renderMarkers();
+  $('.clear-empty-filters')?.addEventListener('click',()=>$('#clearFilters').click());
 }
 function populateCategories() {
   const seen = new Set(catalog.map(s=>s.category).filter(Boolean));
@@ -69,22 +83,25 @@ async function loadStages(reset=true) {
     const batch=filteredCatalog.slice(pageOffset,pageOffset+PAGE_SIZE);pageOffset+=batch.length;rows=reset?batch:[...rows,...batch];hasMore=pageOffset<filteredCatalog.length;
     $('#resultCount').textContent=`${filteredCatalog.length.toLocaleString('nl-NL')} ${filteredCatalog.length===1?'stage':'stages'} gevonden · ${rows.length} getoond`;
     $('#resultsTitle').textContent=currentFilters().q?`Resultaten voor “${currentFilters().q}”`:'Kansen voor jou';
-    populateCategories(); renderCards();
+    populateCategories(); renderFilterSummary(); renderCards();
   } catch(error) {
     list.innerHTML=`<div class="empty-state"><h3>Stages konden niet laden</h3><p>${esc(error.message||'Controleer je verbinding en probeer opnieuw.')}</p></div>`;
     $('#resultCount').textContent='Verbindingsprobleem';
   } finally { loading=false; }
 }
 async function init() {
-  const authPromise=boot();
-  const params=new URLSearchParams(location.search); if(params.get('q'))$('#searchInput').value=params.get('q');
+  const authPromise=boot().catch(()=>null);
+  
   try { catalog=await getStageCatalog(); } catch { /* loadStages renders the readable catalog error */ }
+  populateCategories();readQueryFilters();
   await loadStages(true);
   user=await authPromise;
   if(user){const {data,error}=await backend.from('stagehub_saved_stages').select('stage_id').eq('user_id',user.id);if(!error){savedIds=new Set((data||[]).map(x=>x.stage_id));renderCards();}}
   ['searchInput','cityInput','educationInput','categoryInput','emailOnly'].forEach(id=>$('#'+id).addEventListener(id==='searchInput'||id==='cityInput'?'input':'change',()=>{clearTimeout(debounceTimer);debounceTimer=setTimeout(()=>loadStages(true),250);}));
   $('#filterForm').addEventListener('submit',e=>{e.preventDefault();loadStages(true);});
   $('#clearFilters').addEventListener('click',()=>{$('#searchInput').value='';$('#cityInput').value='';$('#educationInput').value='';$('#categoryInput').value='';$('#emailOnly').checked=false;loadStages(true);});
+  $('#filterSummary').addEventListener('click',event=>{const button=event.target.closest('[data-clear-filter]');if(!button)return;const key=button.dataset.clearFilter;const ids={q:'searchInput',city:'cityInput',level:'educationInput',category:'categoryInput'};if(key==='emailOnly')$('#emailOnly').checked=false;else if(ids[key])$('#'+ids[key]).value='';loadStages(true);});
+  window.addEventListener('popstate',()=>{readQueryFilters();loadStages(true);});
   $('#loadMore').addEventListener('click',()=>loadStages(false));
   $('#listViewBtn').addEventListener('click',()=>{list.hidden=false;$('#mapPanel').hidden=true;$('#listViewBtn').classList.add('active');$('#mapViewBtn').classList.remove('active');$('#listViewBtn').setAttribute('aria-pressed','true');$('#mapViewBtn').setAttribute('aria-pressed','false');});
   $('#mapViewBtn').addEventListener('click',async()=>{list.hidden=true;$('#mapPanel').hidden=false;$('#listViewBtn').classList.remove('active');$('#mapViewBtn').classList.add('active');$('#listViewBtn').setAttribute('aria-pressed','false');$('#mapViewBtn').setAttribute('aria-pressed','true');await setupMap();if(mapReady){setTimeout(()=>{map.invalidateSize();renderMarkers();},60);}});

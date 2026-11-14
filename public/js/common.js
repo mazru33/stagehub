@@ -24,12 +24,30 @@ export async function requireAdmin() {
   if (!isAdmin(user)) { location.replace('/dashboard.html?notice=admin'); return null; }
   return user;
 }
+function initStudentNavigation(user){
+  const header=document.querySelector('.site-header');if(!header)return;
+  let nav=header.querySelector('.nav-links');
+  if(!nav){nav=document.createElement('nav');nav.className='nav-links';nav.innerHTML='<a href="/stages.html">Stages zoeken</a><a href="/ai.html">StageMatch</a><a href="/hoe-werkt-het.html">Hoe werkt het</a>';header.insertBefore(nav,header.querySelector('#navAuth'));}
+  nav.id=nav.id||'primaryNavigation';nav.setAttribute('aria-label','Hoofdnavigatie');
+  if(!nav.querySelector('.mobile-account-link')){const link=document.createElement('a');link.href='/dashboard.html';link.className='mobile-account-link';link.textContent='Mijn overzicht';nav.append(link);}
+  const accountLink=nav.querySelector('.mobile-account-link');accountLink.href=user?'/dashboard.html':'/login.html';accountLink.textContent=user?'Mijn overzicht':'Inloggen';
+  nav.querySelectorAll('a').forEach(link=>{if(new URL(link.href,location.origin).pathname===location.pathname){link.setAttribute('aria-current','page');link.classList.add('active');}});
+  if(header.querySelector('#mobileNavToggle'))return;
+  const button=document.createElement('button');button.type='button';button.id='mobileNavToggle';button.className='mobile-nav-toggle';button.setAttribute('aria-label','Open navigatiemenu');button.setAttribute('aria-controls',nav.id);button.setAttribute('aria-expanded','false');button.innerHTML='<span aria-hidden="true">☰</span>';header.append(button);
+  function close(){header.dataset.mobileOpen='false';button.setAttribute('aria-expanded','false');button.setAttribute('aria-label','Open navigatiemenu');}
+  button.addEventListener('click',()=>{const open=button.getAttribute('aria-expanded')!=='true';header.dataset.mobileOpen=String(open);button.setAttribute('aria-expanded',String(open));button.setAttribute('aria-label',open?'Sluit navigatiemenu':'Open navigatiemenu');});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&button.getAttribute('aria-expanded')==='true'){close();button.focus();}});
+  document.addEventListener('click',event=>{if(!header.contains(event.target))close();});
+  nav.addEventListener('click',event=>{if(event.target.closest('a'))close();});
+}
 export function initNav(user) {
+  initStudentNavigation(user);
   const slot = $('#navAuth'); if (!slot) return;
   if (user) slot.innerHTML = `<a class="nav-link" href="/dashboard.html">Mijn StageHub</a><button class="button button-small button-quiet" id="signOutBtn">Uitloggen</button>`;
   else slot.innerHTML = `<a class="nav-link" href="/login.html">Inloggen</a><a class="button button-small button-primary" href="/login.html?mode=signup">Gratis account</a>`;
   $('#signOutBtn')?.addEventListener('click', async () => { await backend.auth.signOut(); location.href='/'; });
 }
+
 export async function boot() {
   const { data: { session } } = await backend.auth.getSession();
   initNav(session?.user ?? null);
@@ -62,8 +80,7 @@ export function stageCard(stage, saved = false, compact = false) {
     <div class="stage-meta"><span>⌖ ${esc(place)}</span>${stage.hours_per_week ? `<span>◷ ${esc(stage.hours_per_week)} u/week</span>` : ''}${stage.work_mode ? `<span>⌘ ${esc(stage.work_mode)}</span>` : ''}${stage.compensation ? `<span>${esc(stage.compensation)}</span>` : ''}</div>
     ${compact ? '' : `<p class="stage-description">${esc((stage.description || 'Bekijk de originele vacature voor meer informatie.').slice(0,220))}${(stage.description||'').length>220?'…':''}</p>`}
     <p class="contact-availability">${stage.contact_email?'✉ Contactadres beschikbaar':stage.contact_check_status==='source_error'?'Controleer beschikbaarheid bij Stagemarkt':'Contact via de bronvacature'}</p>
-    ${contact}
-    <div class="card-actions"><a class="button button-primary button-small" href="${detailUrl}">Solliciteer <span aria-hidden="true">↗</span></a><button class="button button-quiet button-small save-stage" data-id="${esc(stage.id)}" aria-pressed="${saved}">${saved ? '♥ Bewaard' : '♡ Bewaar'}</button><button class="button button-quiet button-small track-stage" data-id="${esc(stage.id)}">＋ Volgen</button><a class="button button-outline button-small map-link" href="${esc(mapUrl)}" target="_blank" rel="noopener noreferrer">⌖ Kaart</a></div>
+    <div class="card-actions"><a class="button button-primary button-small" href="${detailUrl}">Solliciteer <span aria-hidden="true">↗</span></a><button class="button button-quiet button-small save-stage" data-id="${esc(stage.id)}" aria-pressed="${saved}">${saved ? '♥ Bewaard' : '♡ Bewaar'}</button></div><details class="stage-card-more"><summary>Contact &amp; meer opties</summary>${contact}<div><button class="button button-quiet button-small track-stage" data-id="${esc(stage.id)}">＋ Volgen</button><a class="button button-outline button-small map-link" href="${esc(mapUrl)}" target="_blank" rel="noopener noreferrer">⌖ Kaart</a></div></details>
   </article>`;
 }
 export async function toggleSaved(stageId, user) {
