@@ -4,9 +4,12 @@ Template: `supabase/templates/confirmation.html`
 
 Subject: **Welkom bij StageHUB — bevestig je e-mailadres**
 
-Status: prepared and browser-previewed at desktop and 390px width. Hosted Supabase
-application is pending dashboard sign-in; the connector has no Auth configuration
-editing capability. No sender address was changed and no delivery test was sent.
+Status: applied to hosted Supabase Confirm signup on 14 November 2026. Reloaded
+the dashboard and verified the StageHUB subject, branded preview, one Token and two
+ConfirmationURL placeholders; the original default body is absent. Desktop and
+390px previews were checked. Custom SMTP is OFF, so the sender remains the built-in
+Supabase sender. No sender address was changed and no delivery test was sent.
+Existing received emails do not change; request a fresh confirmation to check delivery.
 
 In the hosted Supabase project, open Authentication → Email → Templates →
 Confirm signup and paste the HTML template and subject. Saving files in Git or
