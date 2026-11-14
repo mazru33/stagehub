@@ -180,6 +180,11 @@ export async function sendApplicationConfirmation({ stage, stageId }) {
 
 export const backend = {
   auth: authFacade,
+  async mentorAction(action, args = {}) {
+    if (!['create','rotate','lookup','connect','connections','progress'].includes(action)) return { data: null, error: { message: 'Onbekende begeleidersactie.' } };
+    const { data, error } = await supabase.rpc('stagehub_mentor_' + action, args);
+    return { data, error: errorShape(error) };
+  },
   async schoolAccess() {
     const { data, error } = await supabase.rpc('stagehub_school_access');
     return { data, error: errorShape(error) };

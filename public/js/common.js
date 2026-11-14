@@ -29,6 +29,7 @@ function initStudentNavigation(user){
   let nav=header.querySelector('.nav-links');
   if(!nav){nav=document.createElement('nav');nav.className='nav-links';nav.innerHTML='<a href="/stages.html">Stages zoeken</a><a href="/ai.html">StageMatch</a><a href="/hoe-werkt-het.html">Hoe werkt het</a>';header.insertBefore(nav,header.querySelector('#navAuth'));}
   nav.id=nav.id||'primaryNavigation';nav.setAttribute('aria-label','Hoofdnavigatie');
+  if(!nav.querySelector('a[href="/teacher.html"]')){const link=document.createElement('a');link.href='/teacher.html';link.textContent='Voor begeleiders';nav.append(link);}
   if(!nav.querySelector('.mobile-account-link')){const link=document.createElement('a');link.href='/dashboard.html';link.className='mobile-account-link';link.textContent='Mijn overzicht';nav.append(link);}
   const accountLink=nav.querySelector('.mobile-account-link');accountLink.href=user?'/dashboard.html':'/login.html';accountLink.textContent=user?'Mijn overzicht':'Inloggen';
   nav.querySelectorAll('a').forEach(link=>{if(new URL(link.href,location.origin).pathname===location.pathname){link.setAttribute('aria-current','page');link.classList.add('active');}});

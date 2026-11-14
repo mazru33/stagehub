@@ -10,9 +10,10 @@ if (form) {
   const safeNext = safeInternalPath(next);
   const schoolButton = $('#schoolLogin');
   schoolButton.disabled = !firebaseConfig.schoolSignInEnabled;
+  schoolButton.hidden = !firebaseConfig.schoolSignInEnabled;
   $('#schoolLoginStatus').textContent = firebaseConfig.schoolSignInEnabled
     ? 'Voor studenten en docenten van Nova College. Je logt veilig in bij Microsoft.'
-    : 'Schoollogin wordt voorbereid met Nova College. Je kunt hieronder je bestaande StageHub-account gebruiken.';
+    : 'Student of docent? Gebruik je eigen e-mailadres. Een schoolkoppeling is niet nodig.';
   schoolButton.addEventListener('click', async () => {
     schoolButton.disabled = true;
     try {

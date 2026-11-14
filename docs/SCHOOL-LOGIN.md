@@ -1,5 +1,10 @@
 # Nova College school login and teacher guidance
 
+**Update:** A separate invitation-code flow now works with ordinary confirmed
+StageHub accounts, without Entra or Nova IT. See [MENTOR-CONNECTIONS.md](MENTOR-CONNECTIONS.md).
+The student and teacher pages use that flow. The school configuration below remains
+optional future work; its APIs are separate from independent mentor connections.
+
 Implemented: Microsoft OAuth entry point, student-selected per-teacher grants,
 immediate database revocation, and a read-only teacher dashboard. No existing
 student is shared and no teacher is automatically approved. School sign-in is
